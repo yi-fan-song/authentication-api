@@ -1,0 +1,11 @@
+[Unit]
+Description=goAPI
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+ExecStart=/home/{user}/go/{dir}/build/main
+
+[Install]
+WantedBy=multi-user.target
