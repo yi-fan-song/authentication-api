@@ -1,13 +1,14 @@
 package main
 
 import (
+	"authentication-api/sqlBuilder"
 	"encoding/json"
 	"fmt"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
-	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"os"
 )
 
 const (
@@ -23,50 +24,72 @@ type tokenRequest struct {
 }
 
 func main() {
+	// Load environment variables and panic if load failed
+	if err := godotenv.Load(); err != nil {
+		panic(err)
+	}
+
+	fmt.Print(os.Getenv("dbusername"))
+	fmt.Print(os.Getenv("dbpassword"))
+	fmt.Print(os.Getenv("dbhostname"))
+	fmt.Print(os.Getenv("dbport"))
+
+	sqlBuilder.GetSqlDb(os.Getenv("dbusername"), os.Getenv("dbpassword"), os.Getenv("dbhostname"), os.Getenv("dbport"))
+
 	http.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello World")
+		_, _ = fmt.Fprintf(w, "Hello World")
 	})
 
 	http.HandleFunc("/token", func (w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			return
 		}
-		//bodyDec := json.NewDecoder(r.Body)
 
-		//var req tokenRequest
-		//if err := bodyDec.Decode(&req); err != io.EOF && err != nil {
-		//	log.Fatal(err)
-		//}
-		request, _ := ioutil.ReadAll(r.Body)
-		fmt.Fprintf(w,"%s", string (request))
+		var req tokenRequest
 
-		//if req.GrantType == "password" {
-		//	if err := bcrypt.CompareHashAndPassword([]byte (hash), []byte (req.Password)); err == nil{
-		//		fmt.Fprintf(w, "logged in")
-		//	}
-		//}
-		//
-		//fmt.Fprintf(w, "Hello World")
+		reqbody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := json.Unmarshal(reqbody, &req); err != nil {
+			panic(err)
+		}
+
+
+
+		reqbyte, err := json.Marshal(req)
+		_, _ = fmt.Fprint(w, reqbyte)
 	})
 
 	http.HandleFunc("/signup", func (w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" {
+		if r.Method != http.MethodPost {
 			return
 		}
-		bodyDec := json.NewDecoder(r.Body)
 
 		var req signupRequest
-		if err := bodyDec.Decode(&req); err != io.EOF && err != nil {
-			log.Fatal(err)
+
+		reqbody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
 		}
+
+		if err := json.Unmarshal(reqbody, &req); err != nil {
+			panic(err)
+		}
+
+
 		hash, _ := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
-		fmt.Fprintf(w, req.Username)
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, req.Email)
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, string (hash))
+		_, _ = fmt.Fprint(w, hash)
 	})
 
-	err := http.ListenAndServe(":9990", nil)
-	fmt.Print(err)
+	if port := os.Getenv("port"); port != "" {
+		if err := http.ListenAndServe(port, nil); err != nil {
+			panic(err)
+		}
+	} else {
+		if err := http.ListenAndServe(":9990", nil); err != nil {
+			panic(err)
+		}
+	}
 }
